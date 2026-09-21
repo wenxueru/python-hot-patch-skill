@@ -1,57 +1,58 @@
 # Python Hot Patch Skill
 
-一个用于指导 Codex **安全地热修补正在运行的 CPython 进程**的 skill。它面向无法轻易重启、需要保留昂贵内存状态，并且变更能够收敛为小范围 Python 对象或方法修改的场景。
+A Codex skill for **safely hot-patching a live CPython process**. It is intended for situations where restarting would destroy valuable in-memory state and the required change can be reduced to a small mutation of existing Python objects or methods.
 
-该 skill 采用 `gdb`、临时共享库和 `Py_AddPendingCall`：调试器只负责将回调加入待处理队列，真正的 Python 修改在解释器主线程到达安全点后执行。
+The skill uses `gdb`, a temporary shared library, and `Py_AddPendingCall`. The debugger only queues a callback; the actual Python mutation runs later on the interpreter's main thread at a safe point.
 
-## 适用场景
+## When to use it
 
-- 重启会丢失代价高昂的内存状态。
-- 修改目标明确，且可以表达为现有 Python 对象或方法的小范围变更。
-- 可以在操作前定义并独立验证进程存活、语义状态、吞吐量或并发度等验收条件。
-- 热修补完成后，能够同步修改磁盘上的源码或配置，避免下次重启回退。
+- Restarting would discard expensive in-memory state.
+- The target is well-defined and the change is a narrow mutation of an existing Python object or method.
+- Acceptance checks can be defined before the operation, including process survival, semantic state, throughput, or concurrency.
+- The equivalent source or configuration change can be persisted afterward so the fix survives a restart.
 
-以下情况应优先重启，或使用正式控制接口、信号处理器和已有调试端点：
+Prefer a restart, supported control API, signal handler, or existing debug endpoint when any of the following applies:
 
-- 修改解释器内部、对象布局或原生扩展状态。
-- 修改模型结构、优化器状态或跨线程不变量。
-- 无法唯一识别目标对象、确认旧状态或可靠验证结果。
+- The change touches interpreter internals, object layouts, or native extension state.
+- The change affects model structure, optimizer state, or invariants spanning multiple threads.
+- The target cannot be identified uniquely, its old state cannot be confirmed, or the outcome cannot be verified reliably.
 
-## 核心安全约束
+## Core safety constraints
 
-- 每次附加进程前必须获得明确授权。
-- 不得从任意暂停线程直接调用 `PyRun_SimpleString`，否则可能因线程未持有 GIL 而死锁或破坏解释器状态。
-- 补丁必须具备幂等保护，并记录包含旧值和新值的 marker。
-- `Py_AddPendingCall` 返回 `0` 只表示成功排队，不代表补丁已经执行。
-- 回调结果未知时只等待 marker 或进程退出，不得重复附加或再次入队。
-- marker 之外还必须独立验证应用行为、错误日志和资源使用情况。
+- Obtain explicit authorization immediately before every process attachment.
+- Never call `PyRun_SimpleString` directly from an arbitrary stopped thread. That thread may not hold the GIL, which can deadlock or corrupt the interpreter.
+- Make the patch idempotent and write a marker containing the old and new values.
+- A zero return value from `Py_AddPendingCall` means only that the callback was queued; it does not mean the patch ran.
+- While the callback outcome is unknown, wait for the marker or process exit. Do not attach again or enqueue a duplicate callback.
+- Independently verify application behavior, errors, and resource usage instead of relying on the marker alone.
 
-完整操作规范见 [`SKILL.md`](./SKILL.md)。
+See [`SKILL.md`](./SKILL.md) for the complete operational guidance.
 
-## 安装
+## Installation
 
-将仓库复制或链接到 Codex skills 目录：
+Copy or link this repository into the Codex skills directory:
 
 ```bash
 ln -s /path/to/python-hot-patch-skill ~/.codex/skills/python-hot-patch
 ```
 
-重新启动或刷新 Codex 会话后，skill 可根据任务描述自动匹配，也可以显式使用 `$python-hot-patch`。
+After restarting or refreshing the Codex session, the skill can be selected automatically from the task description or invoked explicitly as `$python-hot-patch`.
 
-## 使用示例
+## Example request
 
 ```text
-使用 $python-hot-patch 检查 PID 12345 的 asyncio 并发限制是否可以从 8 安全提高到 12。
-先制定验收标准并检查环境；实际 attach 前必须再次向我确认。
+Use $python-hot-patch to determine whether PID 12345's asyncio concurrency limit
+can be safely increased from 8 to 12. Define acceptance checks and inspect the
+environment first. Ask for my authorization again immediately before attaching.
 ```
 
-skill 会优先评估更安全的替代方案。只有满足安全边界时，才会准备临时共享库和待执行补丁；实际 `gdb attach` 仍需要即时授权。
+The skill evaluates safer alternatives first. It prepares a temporary shared library and pending callback only when the request stays within the safety boundary. The actual `gdb attach` still requires just-in-time authorization.
 
-## `asyncio.Semaphore` 特别说明
+## `asyncio.Semaphore` changes
 
-提高并发上限时，应在事件循环线程中对原有 semaphore 调用恰好 `new - old` 次 `release()`，同时更新其所属的限制字段。不要替换 semaphore 对象，因为已有 waiters 仍绑定在原对象上。
+To increase a concurrency limit, perform the mutation on the event-loop thread. Call `release()` on the existing semaphore exactly `new - old` times and update its owning limit field. Do not replace the semaphore because existing waiters remain attached to the original object.
 
-## 仓库结构
+## Repository layout
 
 ```text
 .
@@ -61,12 +62,12 @@ skill 会优先评估更安全的替代方案。只有满足安全边界时，�
     └── openai.yaml
 ```
 
-- `SKILL.md`：Codex 加载的核心工作流和安全边界。
-- `agents/openai.yaml`：skill 的界面显示信息。
+- `SKILL.md` contains the workflow and safety boundaries loaded by Codex.
+- `agents/openai.yaml` contains the skill's UI metadata.
 
-## 维护原则
+## Maintenance
 
-- 保持 skill 聚焦于小范围、可验证的 CPython 在线修改。
-- 新增规则应来源于真实风险或已观察到的失败，不堆积泛化限制。
-- 修改后运行 Codex `skill-creator` 提供的 `quick_validate.py` 校验 `SKILL.md`。
-- 不在仓库中保存进程转储、生产凭证、临时共享库或带有敏感状态的 marker。
+- Keep the skill focused on narrow, verifiable live CPython mutations.
+- Add rules in response to concrete risks or observed failures rather than accumulating speculative constraints.
+- After changing the skill, validate `SKILL.md` with the `quick_validate.py` script provided by Codex `skill-creator`.
+- Do not commit process dumps, production credentials, temporary shared libraries, or markers containing sensitive state.

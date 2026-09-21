@@ -2,7 +2,7 @@
 
 [English](./README.md) | [简体中文](./README_zh.md)
 
-A Codex skill for **safely hot-patching a live CPython process**. It is intended for situations where restarting would destroy valuable in-memory state and the required change can be reduced to a small mutation of existing Python objects or methods.
+An Agent Skill for Codex and Claude Code that guides **safe hot-patching of a live CPython process**. It is intended for situations where restarting would destroy valuable in-memory state and the required change can be reduced to a small mutation of existing Python objects or methods.
 
 The skill uses `gdb`, a temporary shared library, and `Py_AddPendingCall`. The debugger only queues a callback; the actual Python mutation runs later on the interpreter's main thread at a safe point.
 
@@ -30,22 +30,33 @@ Prefer a restart, supported control API, signal handler, or existing debug endpo
 
 See [`SKILL.md`](./SKILL.md) for the complete operational guidance.
 
+## Compatibility
+
+The core `SKILL.md` uses the portable Agent Skills format shared by Codex and Claude Code. Platform-specific UI metadata lives separately under `agents/` and does not change the core workflow.
+
 ## Installation
 
-Copy or link this repository into the Codex skills directory:
+Clone the repository, then link it into one or both personal skill directories:
 
 ```bash
-ln -s /path/to/python-hot-patch-skill ~/.codex/skills/python-hot-patch
+# Codex
+mkdir -p ~/.agents/skills
+ln -s /path/to/python-hot-patch-skill ~/.agents/skills/python-hot-patch
+
+# Claude Code
+mkdir -p ~/.claude/skills
+ln -s /path/to/python-hot-patch-skill ~/.claude/skills/python-hot-patch
 ```
 
-After restarting or refreshing the Codex session, the skill can be selected automatically from the task description or invoked explicitly as `$python-hot-patch`.
+After refreshing the session, either agent can select the skill automatically from the task description. Invoke it explicitly as `$python-hot-patch` in Codex or `/python-hot-patch` in Claude Code.
 
 ## Example request
 
 ```text
-Use $python-hot-patch to determine whether PID 12345's asyncio concurrency limit
-can be safely increased from 8 to 12. Define acceptance checks and inspect the
-environment first. Ask for my authorization again immediately before attaching.
+Determine whether PID 12345's asyncio concurrency limit can be safely increased
+from 8 to 12. Use the python-hot-patch skill, define acceptance checks, and
+inspect the environment first. Ask for my authorization again immediately before
+attaching.
 ```
 
 The skill evaluates safer alternatives first. It prepares a temporary shared library and pending callback only when the request stays within the safety boundary. The actual `gdb attach` still requires just-in-time authorization.
@@ -65,8 +76,8 @@ To increase a concurrency limit, perform the mutation on the event-loop thread. 
     └── openai.yaml
 ```
 
-- `SKILL.md` contains the workflow and safety boundaries loaded by Codex.
-- `agents/openai.yaml` contains the skill's UI metadata.
+- `SKILL.md` contains the portable workflow and safety boundaries loaded by Codex and Claude Code.
+- `agents/openai.yaml` contains optional Codex UI metadata.
 
 ## Maintenance
 

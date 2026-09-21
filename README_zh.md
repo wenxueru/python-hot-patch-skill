@@ -2,7 +2,7 @@
 
 [English](./README.md) | [简体中文](./README_zh.md)
 
-一个用于指导 Codex **安全地热修补正在运行的 CPython 进程**的 skill。它面向无法轻易重启、需要保留昂贵内存状态，并且变更能够收敛为小范围 Python 对象或方法修改的场景。
+一个面向 Codex 和 Claude Code 的通用 Agent Skill，用于指导智能体**安全地热修补正在运行的 CPython 进程**。它适用于无法轻易重启、需要保留昂贵内存状态，并且变更能够收敛为小范围 Python 对象或方法修改的场景。
 
 该 skill 采用 `gdb`、临时共享库和 `Py_AddPendingCall`：调试器只负责将回调加入待处理队列，真正的 Python 修改在解释器主线程到达安全点后执行。
 
@@ -30,21 +30,31 @@
 
 完整操作规范见 [`SKILL.md`](./SKILL.md)。
 
+## 兼容性
+
+核心 `SKILL.md` 使用 Codex 与 Claude Code 共同支持的可移植 Agent Skills 格式。平台专属的界面元数据单独放在 `agents/` 中，不影响核心工作流。
+
 ## 安装
 
-将仓库复制或链接到 Codex skills 目录：
+克隆仓库后，将它链接到一个或两个个人 skill 目录：
 
 ```bash
-ln -s /path/to/python-hot-patch-skill ~/.codex/skills/python-hot-patch
+# Codex
+mkdir -p ~/.agents/skills
+ln -s /path/to/python-hot-patch-skill ~/.agents/skills/python-hot-patch
+
+# Claude Code
+mkdir -p ~/.claude/skills
+ln -s /path/to/python-hot-patch-skill ~/.claude/skills/python-hot-patch
 ```
 
-重新启动或刷新 Codex 会话后，skill 可根据任务描述自动匹配，也可以显式使用 `$python-hot-patch`。
+刷新会话后，两个智能体都可以根据任务描述自动匹配该 skill。Codex 中使用 `$python-hot-patch` 显式调用，Claude Code 中使用 `/python-hot-patch` 显式调用。
 
 ## 使用示例
 
 ```text
-使用 $python-hot-patch 检查 PID 12345 的 asyncio 并发限制是否可以从 8 安全提高到 12。
-先制定验收标准并检查环境；实际 attach 前必须再次向我确认。
+检查 PID 12345 的 asyncio 并发限制是否可以从 8 安全提高到 12。
+使用 python-hot-patch skill，先制定验收标准并检查环境；实际 attach 前必须再次向我确认。
 ```
 
 skill 会优先评估更安全的替代方案。只有满足安全边界时，才会准备临时共享库和待执行补丁；实际 `gdb attach` 仍需要即时授权。
@@ -64,8 +74,8 @@ skill 会优先评估更安全的替代方案。只有满足安全边界时，�
     └── openai.yaml
 ```
 
-- `SKILL.md`：Codex 加载的核心工作流和安全边界。
-- `agents/openai.yaml`：skill 的界面显示信息。
+- `SKILL.md`：Codex 和 Claude Code 加载的可移植工作流与安全边界。
+- `agents/openai.yaml`：Codex 使用的可选界面元数据。
 
 ## 维护原则
 

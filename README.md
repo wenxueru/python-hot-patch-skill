@@ -1,5 +1,7 @@
 # Python Hot Patch Skill
 
+[English](./README.md) | [简体中文](./README_zh.md)
+
 A Codex skill for **safely hot-patching a live CPython process**. It is intended for situations where restarting would destroy valuable in-memory state and the required change can be reduced to a small mutation of existing Python objects or methods.
 
 The skill uses `gdb`, a temporary shared library, and `Py_AddPendingCall`. The debugger only queues a callback; the actual Python mutation runs later on the interpreter's main thread at a safe point.
@@ -57,6 +59,7 @@ To increase a concurrency limit, perform the mutation on the event-loop thread. 
 ```text
 .
 ├── README.md
+├── README_zh.md
 ├── SKILL.md
 └── agents/
     └── openai.yaml

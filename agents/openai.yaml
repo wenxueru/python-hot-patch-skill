@@ -1,0 +1,3 @@
+interface:
+  display_name: "Python Hot Patch"
+  short_description: "Safely patch a live CPython process"

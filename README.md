@@ -1,10 +1,42 @@
 # Python Hot Patch Skill
 
-[English](./README.md) | [简体中文](./README_zh.md)
+<p align="center">
+  <img src="./assets/hero.svg" width="100%" alt="Python Hot Patch — preserve live state, patch at a safe point, and verify independently">
+</p>
+
+<p align="center">
+  <img alt="Agent Skill" src="https://img.shields.io/badge/Agent%20Skill-portable-0ea5e9?style=flat-square">
+  <img alt="Codex" src="https://img.shields.io/badge/Codex-compatible-111827?style=flat-square">
+  <img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-compatible-d97706?style=flat-square">
+  <img alt="CPython" src="https://img.shields.io/badge/CPython-live%20patch-3776ab?style=flat-square">
+  <img alt="Safety" src="https://img.shields.io/badge/safety-explicit%20authorization-10b981?style=flat-square">
+</p>
+
+<p align="center">
+  <a href="./README.md">English</a> · <a href="./README_zh.md">简体中文</a>
+</p>
 
 An Agent Skill for Codex and Claude Code that guides **safe hot-patching of a live CPython process**. It is intended for situations where restarting would destroy valuable in-memory state and the required change can be reduced to a small mutation of existing Python objects or methods.
 
 The skill uses `gdb`, a temporary shared library, and `Py_AddPendingCall`. The debugger only queues a callback; the actual Python mutation runs later on the interpreter's main thread at a safe point.
+
+| Preserve | Schedule | Verify | Persist |
+|:--|:--|:--|:--|
+| Keep expensive in-memory state alive | Queue Python work with `Py_AddPendingCall` | Check behavior independently of the marker | Apply the equivalent source or configuration fix |
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[Inspect PID and invariants] --> B{Safer path available?}
+    B -->|Yes| C[Restart, API, signal, or debug endpoint]
+    B -->|No| D[Define acceptance checks]
+    D --> E[Build pending-call bridge]
+    E --> F[Authorize and attach briefly]
+    F --> G[Run on main thread at a safe point]
+    G --> H[Marker and independent verification]
+    H --> I[Persist source or configuration fix]
+```
 
 ## When to use it
 
@@ -20,6 +52,9 @@ Prefer a restart, supported control API, signal handler, or existing debug endpo
 - The target cannot be identified uniquely, its old state cannot be confirmed, or the outcome cannot be verified reliably.
 
 ## Core safety constraints
+
+> [!CAUTION]
+> Hot-patching is a last-resort operational technique. Prefer a restart or supported control surface whenever one is available.
 
 - Obtain explicit authorization immediately before every process attachment.
 - Never call `PyRun_SimpleString` directly from an arbitrary stopped thread. That thread may not hold the GIL, which can deadlock or corrupt the interpreter.
@@ -69,6 +104,8 @@ To increase a concurrency limit, perform the mutation on the event-loop thread. 
 
 ```text
 .
+├── assets/
+│   └── hero.svg
 ├── README.md
 ├── README_zh.md
 ├── SKILL.md
@@ -78,6 +115,7 @@ To increase a concurrency limit, perform the mutation on the event-loop thread. 
 
 - `SKILL.md` contains the portable workflow and safety boundaries loaded by Codex and Claude Code.
 - `agents/openai.yaml` contains optional Codex UI metadata.
+- `assets/hero.svg` is the repository-local README artwork.
 
 ## Maintenance
 

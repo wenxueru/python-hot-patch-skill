@@ -1,10 +1,42 @@
 # Python Hot Patch Skill
 
-[English](./README.md) | [简体中文](./README_zh.md)
+<p align="center">
+  <img src="./assets/hero.svg" width="100%" alt="Python Hot Patch——保留在线状态，在安全点执行补丁，并进行独立验证">
+</p>
+
+<p align="center">
+  <img alt="Agent Skill" src="https://img.shields.io/badge/Agent%20Skill-portable-0ea5e9?style=flat-square">
+  <img alt="Codex" src="https://img.shields.io/badge/Codex-compatible-111827?style=flat-square">
+  <img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-compatible-d97706?style=flat-square">
+  <img alt="CPython" src="https://img.shields.io/badge/CPython-live%20patch-3776ab?style=flat-square">
+  <img alt="Safety" src="https://img.shields.io/badge/safety-explicit%20authorization-10b981?style=flat-square">
+</p>
+
+<p align="center">
+  <a href="./README.md">English</a> · <a href="./README_zh.md">简体中文</a>
+</p>
 
 一个面向 Codex 和 Claude Code 的通用 Agent Skill，用于指导智能体**安全地热修补正在运行的 CPython 进程**。它适用于无法轻易重启、需要保留昂贵内存状态，并且变更能够收敛为小范围 Python 对象或方法修改的场景。
 
 该 skill 采用 `gdb`、临时共享库和 `Py_AddPendingCall`：调试器只负责将回调加入待处理队列，真正的 Python 修改在解释器主线程到达安全点后执行。
+
+| 保留状态 | 安排执行 | 独立验证 | 持久化修复 |
+|:--|:--|:--|:--|
+| 保留昂贵的内存状态 | 通过 `Py_AddPendingCall` 安排 Python 工作 | 不依赖 marker，独立检查应用行为 | 同步修改源码或配置 |
+
+## 工作原理
+
+```mermaid
+flowchart LR
+    A[检查 PID 与状态不变量] --> B{存在更安全的路径?}
+    B -->|是| C[重启、控制 API、信号或调试端点]
+    B -->|否| D[定义验收条件]
+    D --> E[构建 pending-call 桥接库]
+    E --> F[获得授权并短暂 attach]
+    F --> G[在主线程安全点执行]
+    G --> H[检查 marker 并独立验证]
+    H --> I[持久化源码或配置修复]
+```
 
 ## 适用场景
 
@@ -20,6 +52,9 @@
 - 无法唯一识别目标对象、确认旧状态或可靠验证结果。
 
 ## 核心安全约束
+
+> [!CAUTION]
+> 热修补是最后手段。只要重启或正式控制接口可用，就应优先使用更安全的方案。
 
 - 每次附加进程前必须获得明确授权。
 - 不得从任意暂停线程直接调用 `PyRun_SimpleString`，否则可能因线程未持有 GIL 而死锁或破坏解释器状态。
@@ -67,6 +102,8 @@ skill 会优先评估更安全的替代方案。只有满足安全边界时，�
 
 ```text
 .
+├── assets/
+│   └── hero.svg
 ├── README.md
 ├── README_zh.md
 ├── SKILL.md
@@ -76,6 +113,7 @@ skill 会优先评估更安全的替代方案。只有满足安全边界时，�
 
 - `SKILL.md`：Codex 和 Claude Code 加载的可移植工作流与安全边界。
 - `agents/openai.yaml`：Codex 使用的可选界面元数据。
+- `assets/hero.svg`：README 使用的仓库内置插图。
 
 ## 维护原则
 

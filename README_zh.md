@@ -104,6 +104,7 @@ skill 会优先评估更安全的替代方案。只有满足安全边界时，�
 .
 ├── assets/
 │   └── hero.svg
+├── LICENSE
 ├── README.md
 ├── README_zh.md
 ├── SKILL.md
@@ -121,3 +122,7 @@ skill 会优先评估更安全的替代方案。只有满足安全边界时，�
 - 新增规则应来源于真实风险或已观察到的失败，不堆积泛化限制。
 - 修改后运行 Codex `skill-creator` 提供的 `quick_validate.py` 校验 `SKILL.md`。
 - 不在仓库中保存进程转储、生产凭证、临时共享库或带有敏感状态的 marker。
+
+## 许可证
+
+本项目采用 [MIT 许可证](LICENSE)。

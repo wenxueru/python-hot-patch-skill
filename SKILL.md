@@ -1,5 +1,6 @@
 ---
 name: python-hot-patch
+license: MIT
 description: Safely patch a live CPython process without restart using gdb and Py_AddPendingCall when preserving expensive in-memory state is necessary and the change is narrowly scoped.
 ---
 

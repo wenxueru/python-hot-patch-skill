@@ -106,6 +106,7 @@ To increase a concurrency limit, perform the mutation on the event-loop thread. 
 .
 ├── assets/
 │   └── hero.svg
+├── LICENSE
 ├── README.md
 ├── README_zh.md
 ├── SKILL.md
@@ -123,3 +124,7 @@ To increase a concurrency limit, perform the mutation on the event-loop thread. 
 - Add rules in response to concrete risks or observed failures rather than accumulating speculative constraints.
 - After changing the skill, validate `SKILL.md` with the `quick_validate.py` script provided by Codex `skill-creator`.
 - Do not commit process dumps, production credentials, temporary shared libraries, or markers containing sensitive state.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
